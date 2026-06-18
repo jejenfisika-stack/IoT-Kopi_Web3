@@ -1,0 +1,26 @@
+{
+  "info": {
+    "dibuat": "2026-06-18T13:24:31",
+    "last_date": "2026-06-14",
+    "satuan": {
+      "suhu": "C",
+      "udara": "%",
+      "tanah": "%"
+    }
+  },
+  "variabel": {
+    "suhu": {
+      "metode": "Linear",
+      "slope": -0.005465151095345026,
+      "last_value": 26.66125563566998
+    },
+    "udara": {
+      "metode": "Prophet",
+      "model_file": "udara_model.json"
+    },
+    "tanah": {
+      "metode": "Naive",
+      "last_value": 37.0
+    }
+  }
+}
