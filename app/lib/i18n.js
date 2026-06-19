@@ -8,9 +8,9 @@ export const DICT = {
     chain: '⬡ POLYGON AMOY',
 
     heroBadge: 'Live dari kebun kopi · Bondowoso, Jawa Timur',
-    heroA: 'Monitoring & ',
+    heroA: 'Monitoring dan ',
     heroEm: 'Forecasting',
-    heroMid: ' Sensor, Terverifikasi di ',
+    heroMid: ' Mikro Iklim, Terverifikasi di ',
     heroVi: 'Blockchain',
     heroDesc: 'Data suhu, kelembaban udara & tanah dari sensor IoT — diprediksi dengan AI dan dicatat permanen di Polygon. Transparan, anti-palsu, 100% gratis.',
 
@@ -105,9 +105,9 @@ export const DICT = {
     chain: '⬡ POLYGON AMOY',
 
     heroBadge: 'Live from the coffee farm · Bondowoso, East Java',
-    heroA: 'Sensor ',
+    heroA: 'Monitoring & ',
     heroEm: 'Forecasting',
-    heroMid: ' & Monitoring, Verified on the ',
+    heroMid: ' of Microclimate, Verified on the ',
     heroVi: 'Blockchain',
     heroDesc: 'Temperature, air & soil humidity from IoT sensors — predicted with AI and permanently recorded on Polygon. Transparent, tamper-proof, 100% free.',
 
