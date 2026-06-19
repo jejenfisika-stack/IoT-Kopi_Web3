@@ -7,13 +7,13 @@ import { forecastSemua, labelKepercayaan } from './lib/forecast'
 import { ambilForecastHF } from './lib/hfforecast'
 import { CONTRACT_ADDRESS, AMOY, PINATA_GATEWAY } from './lib/config'
 import { adaKontrak, kontrakBaca, kontrakTulis, keSkala, dariSkala, gasAman, linkTx } from './lib/chain'
+import { DICT } from './lib/i18n'
 import MetricChart from './components/MetricChart'
 
 const fmt = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : '—')
 const short = a => (a ? `${a.slice(0, 6)}...${a.slice(-4)}` : '')
 const linkIPFS = cid => (cid ? `https://${PINATA_GATEWAY}/ipfs/${cid}` : '')
 
-// Upload metadata JSON ke IPFS via API route (Pinata). Kembalikan CID.
 async function uploadMetadata(metadata, namaFile) {
   const res = await fetch('/api/upload-ipfs', {
     method: 'POST',
@@ -37,6 +37,7 @@ function tanggalCantik(num) {
 }
 
 export default function Home() {
+  const [lang, setLang]         = useState('id')
   const [channel, setChannel]   = useState(null)
   const [feeds, setFeeds]       = useState([])
   const [harian, setHarian]     = useState([])
@@ -46,7 +47,7 @@ export default function Home() {
 
   const [horizon, setHorizon]   = useState(7)
   const [forecast, setForecast] = useState(null)
-  const [sumberFc, setSumberFc] = useState('lokal') // 'lokal' | 'hf'
+  const [sumberFc, setSumberFc] = useState('lokal')
   const [fcLoading, setFcLoading] = useState(false)
   const [fcError, setFcError]   = useState('')
 
@@ -58,6 +59,18 @@ export default function Home() {
 
   const [onchainRingkasan, setOnchainRingkasan] = useState([])
   const [onchainForecast, setOnchainForecast]   = useState([])
+
+  const t = DICT[lang]
+
+  // Bahasa: muat dari localStorage
+  useEffect(() => {
+    const l = typeof window !== 'undefined' && localStorage.getItem('lang')
+    if (l === 'id' || l === 'en') setLang(l)
+  }, [])
+  function ubahLang(l) {
+    setLang(l)
+    try { localStorage.setItem('lang', l) } catch {}
+  }
 
   // ── Muat data sensor dari ThingSpeak ──────────────────────
   const muatData = useCallback(async () => {
@@ -79,7 +92,7 @@ export default function Home() {
 
   useEffect(() => { muatData() }, [])  // eslint-disable-line
 
-  // ── Hitung/ambil forecast saat data/horizon/sumber berubah ─
+  // ── Hitung/ambil forecast ─────────────────────────────────
   useEffect(() => {
     let batal = false
     async function jalan() {
@@ -89,7 +102,6 @@ export default function Home() {
         setForecast({ ...forecastSemua(harian, horizon), sumber: 'lokal' })
         return
       }
-      // sumber HF
       setFcLoading(true)
       try {
         const r = await ambilForecastHF(horizon)
@@ -128,7 +140,7 @@ export default function Home() {
       const fRes = await Promise.all(fPromises)
       setOnchainForecast(fRes.map(f => {
         const h = Number(f.horizonHari)
-        const p = f.prediksi.map(dariSkala) // [suhu..., udara..., tanah...]
+        const p = f.prediksi.map(dariSkala)
         return {
           tanggalBuat: Number(f.tanggalBuat), horizon: h,
           suhu: p.slice(0, h), udara: p.slice(h, h * 2), tanah: p.slice(h * 2, h * 3),
@@ -153,14 +165,14 @@ export default function Home() {
 
   // ── Catat ringkasan harian ke blockchain ──────────────────
   async function catatRingkasan() {
-    if (!adaKontrak()) { alert('CONTRACT_ADDRESS belum diisi. Deploy kontrak dulu (lihat README).'); return }
+    if (!adaKontrak()) { alert(t.alNoContract); return }
     const hari = harian.find(h => h.tanggal === tglPilih)
-    if (!hari) { alert('Pilih tanggal yang valid.'); return }
-    setBusy('ringkasan'); setStatus('Menyiapkan data...'); setTxHash('')
+    if (!hari) { alert(t.alPilihTgl); return }
+    setBusy('ringkasan'); setStatus(t.stMenyiapkan); setTxHash('')
     try {
       const c = kontrakBaca()
       const sudah = await c.tanggalSudahDicatat(hari.tanggalNum)
-      if (sudah) { setStatus(''); alert(`Tanggal ${tanggalCantik(hari.tanggalNum)} sudah pernah dicatat di blockchain.`); setBusy(''); return }
+      if (sudah) { setStatus(''); alert(t.alSudah(tanggalCantik(hari.tanggalNum))); setBusy(''); return }
 
       const dataMentah = feedsTanggal(feeds, hari.tanggal)
       const dataHash = await hashHarian(dataMentah)
@@ -168,8 +180,7 @@ export default function Home() {
       const udaraArr = [keSkala(hari.udara.avg), keSkala(hari.udara.min), keSkala(hari.udara.max)]
       const tanahArr = [keSkala(hari.tanah.avg), keSkala(hari.tanah.min), keSkala(hari.tanah.max)]
 
-      // ── Upload metadata lengkap (statistik + data mentah) ke IPFS/Pinata ──
-      setStatus('Mengunggah metadata ke IPFS (Pinata)...')
+      setStatus(t.stUploadIPFS)
       const metadata = {
         tipe: 'ringkasan-harian',
         proyek: 'Kopi IoT Web3',
@@ -188,17 +199,17 @@ export default function Home() {
       }
       const cid = await uploadMetadata(metadata, `ringkasan-${hari.tanggal}.json`)
 
-      setStatus('Membuka MetaMask...')
+      setStatus(t.stMetaMask)
       const { contract } = await kontrakTulis()
       const provider = new ethers.BrowserProvider(window.ethereum)
       const gas = await gasAman(provider)
 
-      setStatus('Mengirim transaksi ke Polygon Amoy...')
+      setStatus(t.stKirim)
       const tx = await contract.catatRingkasan(hari.tanggalNum, suhuArr, udaraArr, tanahArr, hari.jumlahData, dataHash, cid, gas)
-      setStatus('Menunggu konfirmasi blockchain...')
+      setStatus(t.stKonfirmasi)
       const receipt = await tx.wait()
       setTxHash(receipt.hash)
-      setStatus('✅ Ringkasan harian tersimpan di blockchain!')
+      setStatus(t.stRingkasanOk)
       bacaOnChain()
     } catch (e) {
       setStatus('❌ ' + (e.reason || e.shortMessage || e.message))
@@ -207,12 +218,11 @@ export default function Home() {
 
   // ── Catat forecast ke blockchain ──────────────────────────
   async function catatForecast() {
-    if (!adaKontrak()) { alert('CONTRACT_ADDRESS belum diisi. Deploy kontrak dulu (lihat README).'); return }
-    if (!forecast) { alert('Forecast belum siap.'); return }
-    setBusy('forecast'); setStatus('Menyiapkan forecast...'); setTxHash('')
+    if (!adaKontrak()) { alert(t.alNoContract); return }
+    if (!forecast) { alert(t.alForecastBelum); return }
+    setBusy('forecast'); setStatus(t.stSiapForecast); setTxHash('')
     try {
       const tglBuat = parseInt(new Date().toISOString().slice(0, 10).replaceAll('-', ''), 10)
-      // Gabung jadi satu array: [suhu..., udara..., tanah...] (panjang = horizon*3)
       const prediksi = [
         ...forecast.suhu.prediksi.map(keSkala),
         ...forecast.udara.prediksi.map(keSkala),
@@ -222,8 +232,7 @@ export default function Home() {
         s: forecast.suhu.prediksi, u: forecast.udara.prediksi, t: forecast.tanah.prediksi, h: horizon,
       }))
 
-      // ── Upload metadata forecast (termasuk metode) ke IPFS/Pinata ──
-      setStatus('Mengunggah metadata forecast ke IPFS (Pinata)...')
+      setStatus(t.stUploadForecast)
       const metadata = {
         tipe: 'forecast',
         proyek: 'Kopi IoT Web3',
@@ -231,8 +240,8 @@ export default function Home() {
         horizonHari: horizon,
         metode: forecast.metode,
         basisRiwayatHari: forecast.jumlahHariRiwayat,
-        prediksi: forecast.tanggalPrediksi.map((t, i) => ({
-          tanggal: t,
+        prediksi: forecast.tanggalPrediksi.map((tt, i) => ({
+          tanggal: tt,
           suhu:  forecast.suhu.prediksi[i],
           udara: forecast.udara.prediksi[i],
           tanah: forecast.tanah.prediksi[i],
@@ -243,17 +252,17 @@ export default function Home() {
       }
       const cid = await uploadMetadata(metadata, `forecast-${tglBuat}.json`)
 
-      setStatus('Membuka MetaMask...')
+      setStatus(t.stMetaMask)
       const { contract } = await kontrakTulis()
       const provider = new ethers.BrowserProvider(window.ethereum)
       const gas = await gasAman(provider)
 
-      setStatus('Mengirim transaksi ke Polygon Amoy...')
+      setStatus(t.stKirim)
       const tx = await contract.catatForecast(tglBuat, horizon, prediksi, dataHash, cid, gas)
-      setStatus('Menunggu konfirmasi blockchain...')
+      setStatus(t.stKonfirmasi)
       const receipt = await tx.wait()
       setTxHash(receipt.hash)
-      setStatus('✅ Forecast tersimpan di blockchain!')
+      setStatus(t.stForecastOk)
       bacaOnChain()
     } catch (e) {
       setStatus('❌ ' + (e.reason || e.shortMessage || e.message))
@@ -268,33 +277,35 @@ export default function Home() {
 
   return (
     <>
-      {/* Background FX */}
       <div className="bg-fx" aria-hidden="true">
-        <div className="orb orb-1" />
-        <div className="orb orb-2" />
-        <div className="orb orb-3" />
+        <div className="orb orb-1" /><div className="orb orb-2" /><div className="orb orb-3" />
       </div>
 
       <main className="mx-auto max-w-6xl px-4 py-6">
         {/* ── NAVBAR ── */}
         <header className="mb-8 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-emerald-400/20 to-amber-300/10 text-2xl ring-1 ring-white/15">☕</div>
+            <Logo />
             <div>
               <div className="display text-lg font-bold leading-none text-white">
                 Kopi<span className="grad-emerald"> IoT </span>Web3
               </div>
-              <div className="mono mt-1 text-[10px] uppercase tracking-[3px] text-gray-500">Sensor · AI · Blockchain</div>
+              <div className="mono mt-1 text-[10px] uppercase tracking-[3px] text-gray-500">{t.tagline}</div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="chip mono px-3 py-1.5 text-[10px] font-bold tracking-wide text-violet-200">⬡ POLYGON AMOY</span>
+            {/* Toggle bahasa */}
+            <div className="chip flex items-center gap-0.5 p-0.5 text-[11px] font-bold">
+              <button onClick={() => ubahLang('id')} className={`rounded-full px-2.5 py-1 transition ${lang === 'id' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}>🇮🇩 ID</button>
+              <button onClick={() => ubahLang('en')} className={`rounded-full px-2.5 py-1 transition ${lang === 'en' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}>🇬🇧 EN</button>
+            </div>
+            <span className="chip mono hidden px-3 py-1.5 text-[10px] font-bold tracking-wide text-violet-200 sm:inline">{t.chain}</span>
             <button
               onClick={handleConnect}
               className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold transition ${wallet ? 'chip text-emerald-300' : 'btn-violet'}`}
             >
               <span className={`h-2 w-2 rounded-full ${wallet ? 'live-dot bg-emerald-400' : 'bg-white/70'}`} />
-              {wallet ? short(wallet) : 'Connect Wallet'}
+              {wallet ? short(wallet) : t.connect}
             </button>
           </div>
         </header>
@@ -303,97 +314,90 @@ export default function Home() {
         <section className="mb-10 text-center">
           <div className="chip mx-auto mb-5 inline-flex items-center gap-2 px-4 py-1.5 text-[11px] font-medium text-gray-300">
             <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            Live dari kebun kopi · Bondowoso, Jawa Timur
+            {t.heroBadge}
           </div>
           <h1 className="display mx-auto max-w-3xl text-4xl font-bold leading-[1.1] text-white sm:text-5xl">
-            Monitoring &amp; <span className="grad-emerald">Forecasting</span> Sensor,
-            <br className="hidden sm:block" /> Terverifikasi di <span className="grad-violet">Blockchain</span>
+            {t.heroA}<span className="grad-emerald">{t.heroEm}</span>{t.heroMid}<span className="grad-violet">{t.heroVi}</span>
           </h1>
-          <p className="mx-auto mt-4 max-w-xl text-sm text-gray-400 sm:text-base">
-            Data suhu, kelembaban udara &amp; tanah dari sensor IoT — diprediksi dengan AI dan dicatat permanen
-            di Polygon. Transparan, anti-palsu, 100% gratis.
-          </p>
+          <p className="mx-auto mt-4 max-w-xl text-sm text-gray-400 sm:text-base">{t.heroDesc}</p>
 
-          {/* Stat chips */}
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-            <Stat label="Pembacaan" value={feeds.length ? feeds.length.toLocaleString('id-ID') : '—'} />
-            <Stat label="Hari riwayat" value={harian.length || '—'} />
-            <Stat label="Tercatat on-chain" value={totalOnchain} />
-            <Stat label="Status" value={loading ? 'Memuat…' : 'Online'} accent />
+            <Stat label={t.statPembacaan} value={feeds.length ? feeds.length.toLocaleString('id-ID') : '—'} />
+            <Stat label={t.statHari} value={harian.length || '—'} />
+            <Stat label={t.statOnchain} value={totalOnchain} />
+            <Stat label={t.statStatus} value={loading ? t.memuat : t.online} accent />
           </div>
         </section>
 
-        {/* ── PERINGATAN / ERROR ── */}
         {!adaKontrak() && (
           <div className="mb-5 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
-            <b>⚙️ Belum terhubung ke blockchain.</b> Isi <code className="mono">CONTRACT_ADDRESS</code> di <code className="mono">app/lib/config.js</code> (lihat README).
+            <b>{t.warnNoContractA}</b>{t.warnNoContractB}
           </div>
         )}
-        {error && <div className="mb-5 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">Gagal memuat data: {error}</div>}
+        {error && <div className="mb-5 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">{t.errLoad}{error}</div>}
 
         {/* ── KARTU LIVE ── */}
         <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <LiveCard emoji="🌡️" label="Suhu Udara" value={fmt(terbaru?.suhu)} unit="°C" warna="#fb7185" />
-          <LiveCard emoji="💧" label="Kelembaban Udara" value={fmt(terbaru?.udara, 0)} unit="%" warna="#38bdf8" />
-          <LiveCard emoji="🌱" label="Kelembaban Tanah" value={fmt(terbaru?.tanah, 0)} unit="%" warna="#4ade80" />
+          <LiveCard emoji="🌡️" label={t.suhuUdara} live={t.liveSensor} value={fmt(terbaru?.suhu)} unit="°C" warna="#fb7185" />
+          <LiveCard emoji="💧" label={t.kelUdara} live={t.liveSensor} value={fmt(terbaru?.udara, 0)} unit="%" warna="#38bdf8" />
+          <LiveCard emoji="🌱" label={t.kelTanah} live={t.liveSensor} value={fmt(terbaru?.tanah, 0)} unit="%" warna="#4ade80" />
         </section>
 
         {/* ── STATUS BAR ── */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 glass px-4 py-3 text-sm">
           <div className="text-gray-400">
-            {loading ? 'Memuat data sensor…' : (
-              <>Channel <b className="text-gray-200">{channel?.name}</b> · {feeds.length.toLocaleString('id-ID')} pembacaan · {harian.length} hari
-              {terbaru && <> · terakhir <b className="text-gray-200">{new Date(terbaru.waktu).toLocaleString('id-ID')}</b></>}</>
+            {loading ? t.memuatSensor : (
+              <>{t.channel} <b className="text-gray-200">{channel?.name}</b> · {feeds.length.toLocaleString('id-ID')} {t.pembacaan} · {harian.length} {t.hari}
+              {terbaru && <> · {t.terakhir} <b className="text-gray-200">{new Date(terbaru.waktu).toLocaleString(lang === 'en' ? 'en-GB' : 'id-ID')}</b></>}</>
             )}
           </div>
-          <button onClick={muatData} className="chip px-3 py-1.5 text-xs font-bold text-gray-200 transition hover:text-white">↻ Refresh</button>
+          <button onClick={muatData} className="chip px-3 py-1.5 text-xs font-bold text-gray-200 transition hover:text-white">{t.refresh}</button>
         </div>
 
         {/* ── FORECASTING ── */}
         <section className="mb-6 glass p-5 sm:p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="display text-xl font-bold text-white">🔮 Forecasting</h2>
+              <h2 className="display text-xl font-bold text-white">🔮 {t.forecasting}</h2>
               <p className="text-xs text-gray-400">
-                {sumberFc === 'hf' ? 'Model Hugging Face (best-per-variable)' : 'Regresi linear (browser)'} · prediksi {horizon} hari ke depan
+                {sumberFc === 'hf' ? t.srcHF : t.srcLokal} {t.prediksiNhari(horizon)}
               </p>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-gray-500">Horizon:</span>
+              <span className="text-gray-500">{t.horizon}</span>
               {[3, 5, 7].map(h => (
                 <button key={h} onClick={() => setHorizon(h)}
                   className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${horizon === h ? 'btn-primary' : 'chip text-gray-300 hover:text-white'}`}>
-                  {h} hari
+                  {t.nhari(h)}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Sumber forecast: lokal vs Hugging Face */}
           <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-gray-500">Sumber:</span>
+            <span className="text-gray-500">{t.sumber}</span>
             <button onClick={() => setSumberFc('lokal')}
               className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${sumberFc === 'lokal' ? 'btn-primary' : 'chip text-gray-300 hover:text-white'}`}>
-              📈 Statistik lokal
+              {t.statistikLokal}
             </button>
             <button onClick={() => setSumberFc('hf')}
               className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${sumberFc === 'hf' ? 'btn-violet' : 'chip text-gray-300 hover:text-white'}`}>
-              🤗 Model HF
+              {t.modelHF}
             </button>
-            {fcLoading && <span className="text-xs text-gray-500">memuat dari HF…</span>}
-            {fcError && <span className="text-xs text-red-300">HF gagal — pakai lokal</span>}
+            {fcLoading && <span className="text-xs text-gray-500">{t.memuatHF}</span>}
+            {fcError && <span className="text-xs text-red-300">{t.hfGagal}</span>}
           </div>
 
           {harian.length < 7 && (
             <div className="mb-4 rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
-              ⚠️ Baru ada <b>{harian.length} hari</b> data. Forecast mulai dapat dipercaya setelah ≥14 hari, ideal ≥30 hari.
+              {t.warnDataA}<b>{t.warnDataHari(harian.length)}</b>{t.warnDataB}
             </div>
           )}
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <MetricChart title="Suhu" emoji="🌡️" unit="°C" color="#fb7185" history={histSuhu}  forecast={forecast?.suhu.prediksi} />
-            <MetricChart title="Kelembaban Udara" emoji="💧" unit="%" color="#38bdf8" history={histUdara} forecast={forecast?.udara.prediksi} />
-            <MetricChart title="Kelembaban Tanah" emoji="🌱" unit="%" color="#4ade80" history={histTanah} forecast={forecast?.tanah.prediksi} />
+            <MetricChart title={t.suhuUdara} emoji="🌡️" unit="°C" color="#fb7185" history={histSuhu}  forecast={forecast?.suhu.prediksi} />
+            <MetricChart title={t.kelUdara} emoji="💧" unit="%" color="#38bdf8" history={histUdara} forecast={forecast?.udara.prediksi} />
+            <MetricChart title={t.kelTanah} emoji="🌱" unit="%" color="#4ade80" history={histTanah} forecast={forecast?.tanah.prediksi} />
           </div>
 
           {forecast && (
@@ -401,13 +405,13 @@ export default function Home() {
               <table className="w-full min-w-[480px] text-sm">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wide text-gray-500">
-                    <th className="py-2">Tanggal</th><th>🌡️ Suhu (°C)</th><th>💧 Udara (%)</th><th>🌱 Tanah (%)</th>
+                    <th className="py-2">{t.thTanggal}</th><th>🌡️ {t.suhuUdara}</th><th>💧 {t.kelUdara}</th><th>🌱 {t.kelTanah}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {forecast.tanggalPrediksi.map((t, i) => (
-                    <tr key={t} className="border-t border-white/5">
-                      <td className="py-2 font-semibold text-gray-300">{t}</td>
+                  {forecast.tanggalPrediksi.map((tt, i) => (
+                    <tr key={tt} className="border-t border-white/5">
+                      <td className="py-2 font-semibold text-gray-300">{tt}</td>
                       <td className="mono text-rose-300">{fmt(forecast.suhu.prediksi[i])}</td>
                       <td className="mono text-sky-300">{fmt(forecast.udara.prediksi[i], 0)}</td>
                       <td className="mono text-emerald-300">{fmt(forecast.tanah.prediksi[i], 0)}</td>
@@ -418,11 +422,11 @@ export default function Home() {
               <div className="mt-3 flex flex-wrap gap-4 text-xs text-gray-400">
                 {forecast.sumber === 'hf'
                   ? ['suhu', 'udara', 'tanah'].map(n => (
-                      <span key={n}>Metode {n}: <b className="text-violet-300">{forecast.metodePer?.[n] || '-'}</b></span>
+                      <span key={n}>{t.metode(n)}: <b className="text-violet-300">{forecast.metodePer?.[n] || '-'}</b></span>
                     ))
-                  : [['Suhu', forecast.suhu], ['Udara', forecast.udara], ['Tanah', forecast.tanah]].map(([n, f]) => {
+                  : [['suhu', forecast.suhu], ['udara', forecast.udara], ['tanah', forecast.tanah]].map(([n, f]) => {
                       const k = labelKepercayaan(f.r2)
-                      return <span key={n}>Kepercayaan {n}: <b style={{ color: k.warna }}>{k.teks}</b> (R²={Number(f.r2).toFixed(2)})</span>
+                      return <span key={n}>{t.kepercayaan(n)}: <b style={{ color: k.warna }}>{t.conf[k.teks]}</b> (R²={Number(f.r2).toFixed(2)})</span>
                     })}
               </div>
             </div>
@@ -431,41 +435,37 @@ export default function Home() {
 
         {/* ── BLOCKCHAIN ── */}
         <section className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {/* Catat ringkasan */}
           <div className="glass glass-hover p-5">
-            <h3 className="display mb-1 text-base font-bold text-white">📦 Catat Ringkasan Harian</h3>
-            <p className="mb-3 text-xs text-gray-400">Simpan rata-rata/min/max + hash 1 hari ke blockchain (sekali per hari).</p>
-            <label className="mb-2 block text-xs font-semibold text-gray-400">Pilih tanggal</label>
+            <h3 className="display mb-1 text-base font-bold text-white">{t.catatRingkasanT}</h3>
+            <p className="mb-3 text-xs text-gray-400">{t.catatRingkasanD}</p>
+            <label className="mb-2 block text-xs font-semibold text-gray-400">{t.pilihTanggal}</label>
             <select value={tglPilih} onChange={e => setTglPilih(e.target.value)}
               className="mb-3 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-200 outline-none focus:border-emerald-400/40">
-              {harian.slice().reverse().map(h => <option key={h.tanggal} value={h.tanggal}>{h.tanggal} ({h.jumlahData} data)</option>)}
+              {harian.slice().reverse().map(h => <option key={h.tanggal} value={h.tanggal}>{h.tanggal} ({t.nData(h.jumlahData)})</option>)}
             </select>
             {hariPilih && (
               <div className="mb-3 grid grid-cols-3 gap-2 text-center text-xs">
-                <Mini label="Suhu avg" v={`${fmt(hariPilih.suhu?.avg)}°C`} sub={`${fmt(hariPilih.suhu?.min)}–${fmt(hariPilih.suhu?.max)}`} />
-                <Mini label="Udara avg" v={`${fmt(hariPilih.udara?.avg, 0)}%`} sub={`${fmt(hariPilih.udara?.min, 0)}–${fmt(hariPilih.udara?.max, 0)}`} />
-                <Mini label="Tanah avg" v={`${fmt(hariPilih.tanah?.avg, 0)}%`} sub={`${fmt(hariPilih.tanah?.min, 0)}–${fmt(hariPilih.tanah?.max, 0)}`} />
+                <Mini label={t.suhuAvg} v={`${fmt(hariPilih.suhu?.avg)}°C`} sub={`${fmt(hariPilih.suhu?.min)}–${fmt(hariPilih.suhu?.max)}`} />
+                <Mini label={t.udaraAvg} v={`${fmt(hariPilih.udara?.avg, 0)}%`} sub={`${fmt(hariPilih.udara?.min, 0)}–${fmt(hariPilih.udara?.max, 0)}`} />
+                <Mini label={t.tanahAvg} v={`${fmt(hariPilih.tanah?.avg, 0)}%`} sub={`${fmt(hariPilih.tanah?.min, 0)}–${fmt(hariPilih.tanah?.max, 0)}`} />
               </div>
             )}
-            <button onClick={catatRingkasan} disabled={busy === 'ringkasan'}
-              className="btn-primary w-full rounded-xl px-4 py-2.5 text-sm">
-              {busy === 'ringkasan' ? 'Memproses…' : '⛓️ Simpan ke Blockchain'}
+            <button onClick={catatRingkasan} disabled={busy === 'ringkasan'} className="btn-primary w-full rounded-xl px-4 py-2.5 text-sm">
+              {busy === 'ringkasan' ? t.memproses : t.simpanBC}
             </button>
           </div>
 
-          {/* Catat forecast */}
           <div className="glass glass-hover p-5">
-            <h3 className="display mb-1 text-base font-bold text-white">🔮 Catat Snapshot Forecast</h3>
-            <p className="mb-3 text-xs text-gray-400">Simpan hasil prediksi {horizon} hari ke depan (disarankan 1× seminggu).</p>
+            <h3 className="display mb-1 text-base font-bold text-white">{t.catatForecastT}</h3>
+            <p className="mb-3 text-xs text-gray-400">{t.catatForecastD(horizon)}</p>
             {forecast && (
               <div className="mb-3 rounded-xl border border-white/8 bg-white/5 p-3 text-xs text-gray-300">
-                Metode: <b className="text-violet-300">{forecast.metode}</b><br />
-                Horizon: <b>{horizon} hari</b> · berdasarkan <b>{forecast.jumlahHariRiwayat} hari</b> riwayat
+                {t.metodeLbl} <b className="text-violet-300">{forecast.metode}</b><br />
+                {t.horizonInfo(horizon, forecast.jumlahHariRiwayat)}
               </div>
             )}
-            <button onClick={catatForecast} disabled={busy === 'forecast'}
-              className="btn-violet w-full rounded-xl px-4 py-2.5 text-sm">
-              {busy === 'forecast' ? 'Memproses…' : '⛓️ Simpan Forecast ke Blockchain'}
+            <button onClick={catatForecast} disabled={busy === 'forecast'} className="btn-violet w-full rounded-xl px-4 py-2.5 text-sm">
+              {busy === 'forecast' ? t.memproses : t.simpanForecastBC}
             </button>
           </div>
         </section>
@@ -473,30 +473,30 @@ export default function Home() {
         {(status || txHash) && (
           <div className="mb-6 glass px-4 py-3 text-sm">
             {status && <div className="text-gray-200">{status}</div>}
-            {txHash && <a href={linkTx(txHash)} target="_blank" rel="noreferrer" className="mono break-all text-xs text-sky-300 underline">Lihat transaksi: {txHash}</a>}
+            {txHash && <a href={linkTx(txHash)} target="_blank" rel="noreferrer" className="mono break-all text-xs text-sky-300 underline">{t.lihatTx} {txHash}</a>}
           </div>
         )}
 
         {/* ── DATA ON-CHAIN ── */}
         {adaKontrak() && (
           <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <OnchainBox title="📜 Ringkasan di Blockchain" empty="Belum ada ringkasan tercatat.">
+            <OnchainBox title={t.onchainRingkasanT} empty={t.emptyRingkasan}>
               {onchainRingkasan.map((r, i) => (
                 <div key={i} className="border-t border-white/5 py-2 text-xs">
-                  <div className="flex justify-between"><b className="text-gray-200">{tanggalCantik(r.tanggal)}</b><span className="text-gray-500">{r.jumlahData} data</span></div>
+                  <div className="flex justify-between"><b className="text-gray-200">{tanggalCantik(r.tanggal)}</b><span className="text-gray-500">{t.nDataShort(r.jumlahData)}</span></div>
                   <div className="mono text-gray-400">🌡️{fmt(r.suhu[0])}°C 💧{fmt(r.udara[0], 0)}% 🌱{fmt(r.tanah[0], 0)}%</div>
                   <div className="mono truncate text-[10px] text-gray-600">hash: {r.dataHash}</div>
-                  {r.metadataCID && <a href={linkIPFS(r.metadataCID)} target="_blank" rel="noreferrer" className="text-[10px] text-violet-300 underline">📦 Metadata IPFS</a>}
+                  {r.metadataCID && <a href={linkIPFS(r.metadataCID)} target="_blank" rel="noreferrer" className="text-[10px] text-violet-300 underline">{t.metaIPFS}</a>}
                 </div>
               ))}
             </OnchainBox>
-            <OnchainBox title="🔮 Forecast di Blockchain" empty="Belum ada forecast tercatat.">
+            <OnchainBox title={t.onchainForecastT} empty={t.emptyForecast}>
               {onchainForecast.map((f, i) => (
                 <div key={i} className="border-t border-white/5 py-2 text-xs">
-                  <div className="flex justify-between"><b className="text-gray-200">Dibuat {tanggalCantik(f.tanggalBuat)}</b><span className="text-gray-500">{f.horizon} hari</span></div>
+                  <div className="flex justify-between"><b className="text-gray-200">{t.dibuat} {tanggalCantik(f.tanggalBuat)}</b><span className="text-gray-500">{t.nhari(f.horizon)}</span></div>
                   <div className="mono text-gray-400">🌡️{f.suhu.map(v => fmt(v)).join(', ')}</div>
                   <div className="mono truncate text-[10px] text-gray-600">hash: {f.dataHash}</div>
-                  {f.metadataCID && <a href={linkIPFS(f.metadataCID)} target="_blank" rel="noreferrer" className="text-[10px] text-violet-300 underline">📦 Metadata IPFS</a>}
+                  {f.metadataCID && <a href={linkIPFS(f.metadataCID)} target="_blank" rel="noreferrer" className="text-[10px] text-violet-300 underline">{t.metaIPFS}</a>}
                 </div>
               ))}
             </OnchainBox>
@@ -511,8 +511,8 @@ export default function Home() {
             <span className="chip px-2.5 py-1">📦 IPFS / Pinata</span>
             <span className="chip px-2.5 py-1">▲ Vercel</span>
           </div>
-          Kopi IoT Web3 · 100% gratis (testnet) ·{' '}
-          <a href={`${AMOY.blockExplorerUrls[0]}/address/${CONTRACT_ADDRESS || ''}`} target="_blank" rel="noreferrer" className="text-gray-400 underline hover:text-white">lihat kontrak</a>
+          {t.footer}
+          <a href={`${AMOY.blockExplorerUrls[0]}/address/${CONTRACT_ADDRESS || ''}`} target="_blank" rel="noreferrer" className="text-gray-400 underline hover:text-white">{t.lihatKontrak}</a>
         </footer>
       </main>
     </>
@@ -520,6 +520,22 @@ export default function Home() {
 }
 
 // ── Komponen kecil ──────────────────────────────────────────
+function Logo() {
+  const [ok, setOk] = useState(true)
+  return (
+    <div className="relative h-11 w-11 shrink-0">
+      {ok ? (
+        <img src="/logo-kopi.jpg" alt="Kopi" onError={() => setOk(false)}
+          className="h-11 w-11 rounded-2xl object-cover ring-1 ring-white/20"
+          style={{ boxShadow: '0 0 22px rgba(74,222,128,.28)' }} />
+      ) : (
+        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-emerald-400/20 to-amber-300/10 text-2xl ring-1 ring-white/15">🍒</div>
+      )}
+      <span className="absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-emerald-500 text-[8px] font-bold text-emerald-950 ring-2 ring-[#070a12]">✓</span>
+    </div>
+  )
+}
+
 function Stat({ label, value, accent }) {
   return (
     <div className="glass px-5 py-3 text-center">
@@ -529,7 +545,7 @@ function Stat({ label, value, accent }) {
   )
 }
 
-function LiveCard({ emoji, label, value, unit, warna }) {
+function LiveCard({ emoji, label, value, unit, warna, live }) {
   return (
     <div className="glass glass-hover relative overflow-hidden p-5">
       <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full opacity-20 blur-2xl" style={{ background: warna }} />
@@ -542,7 +558,7 @@ function LiveCard({ emoji, label, value, unit, warna }) {
         <span className="mb-1 text-lg font-bold text-gray-500">{unit}</span>
       </div>
       <div className="mt-2 flex items-center gap-1.5 text-[11px] text-gray-500">
-        <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" /> live dari sensor
+        <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" /> {live}
       </div>
     </div>
   )

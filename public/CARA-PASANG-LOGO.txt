@@ -1,0 +1,10 @@
+CARA MEMASANG FOTO LOGO
+=======================
+Simpan foto kopi (ceri kopi) Anda di folder ini dengan nama persis:
+
+    logo-kopi.jpg
+
+Header website akan otomatis memakainya sebagai logo (bulat, dengan ring & glow).
+Jika file belum ada, header menampilkan ikon cadangan (🍒) sementara.
+
+Tips: gunakan foto rasio mendekati persegi agar bulatannya pas.
