@@ -23,6 +23,7 @@ export default function VerifyPanel({ t, forecast, contractAddr, explorer }) {
   }, [teks])
 
   const suhu = forecast?.sumber === 'lokal' ? forecast.suhu : null
+  const metodePer = forecast?.metodePer || null  // {suhu,udara,tanah} bila sumber HF
   const Arrow = () => <span className="select-none text-gray-600">→</span>
 
   return (
@@ -83,6 +84,32 @@ export default function VerifyPanel({ t, forecast, contractAddr, explorer }) {
               <li>• {v.formulaR2}</li>
               <li>• {v.formulaMape}</li>
             </ul>
+          </div>
+
+          {/* ── Model yang dipakai (Linear / Naive / Prophet) ── */}
+          <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+            <h4 className="mb-1 font-bold text-sky-300">{v.models}</h4>
+            <p className="mb-3 text-xs text-gray-400">{v.modelsDesc}</p>
+            <div className="space-y-2">
+              {[
+                { key: 'Linear',  nama: v.mLinear,  desc: v.mLinearD,  c: '#fb7185' },
+                { key: 'Naive',   nama: v.mNaive,   desc: v.mNaiveD,   c: '#9ca3af' },
+                { key: 'Prophet', nama: v.mProphet, desc: v.mProphetD, c: '#4ade80' },
+              ].map(m => {
+                const dipakai = metodePer ? Object.entries(metodePer).filter(([, mm]) => mm === m.key).map(([vv]) => vv) : []
+                return (
+                  <div key={m.key} className="rounded-lg border border-white/8 bg-black/20 p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-bold" style={{ color: m.c }}>{m.nama}</span>
+                      {dipakai.length > 0 && (
+                        <span className="chip px-2 py-0.5 text-[10px] text-gray-300">{v.usedFor}: {dipakai.join(', ')}</span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-[11px] leading-relaxed text-gray-400">{m.desc}</p>
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
           {/* ── 3. On-chain ── */}
