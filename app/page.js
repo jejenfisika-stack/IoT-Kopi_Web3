@@ -9,6 +9,7 @@ import { CONTRACT_ADDRESS, AMOY, PINATA_GATEWAY } from './lib/config'
 import { adaKontrak, kontrakBaca, kontrakTulis, keSkala, dariSkala, gasAman, linkTx } from './lib/chain'
 import { DICT } from './lib/i18n'
 import MetricChart from './components/MetricChart'
+import VerifyPanel from './components/VerifyPanel'
 
 const fmt = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : '—')
 const short = a => (a ? `${a.slice(0, 6)}...${a.slice(-4)}` : '')
@@ -432,6 +433,9 @@ export default function Home() {
             </div>
           )}
         </section>
+
+        {/* ── VERIFY / CARA KERJA ── */}
+        <VerifyPanel t={t} forecast={forecast} contractAddr={CONTRACT_ADDRESS} explorer={AMOY.blockExplorerUrls[0]} />
 
         {/* ── BLOCKCHAIN ── */}
         <section className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">

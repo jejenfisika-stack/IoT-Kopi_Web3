@@ -49,7 +49,8 @@ export function forecastSeri(ys, horizon, clamp) {
     return { prediksi: Array(horizon).fill(last), r2: 0, slope: 0, cukupData: false }
   }
 
-  const { slope, intercept, r2, n, meanY } = model
+  const { slope, intercept: b0, r2, n, meanY } = model
+  const intercept = b0
   const prediksi = []
   for (let h = 1; h <= horizon; h++) {
     const x = n - 1 + h
@@ -61,7 +62,7 @@ export function forecastSeri(ys, horizon, clamp) {
     if (clamp) nilai = Math.min(clamp[1], Math.max(clamp[0], nilai))
     prediksi.push(nilai)
   }
-  return { prediksi, r2, slope, cukupData: n >= 7 }
+  return { prediksi, r2, slope, intercept, cukupData: n >= 7 }
 }
 
 // Forecast lengkap untuk ketiga parameter dari agregasi harian.
