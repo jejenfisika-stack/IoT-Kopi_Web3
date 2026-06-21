@@ -14,8 +14,8 @@ ThingSpeak → [Colab: latih + backtest] → model *.json
 ```
 
 ## Isi folder
-- `Colab_Train_Prophet.ipynb` — training Prophet/Naive/Linear (best-per-variable) → `model_config.json`
-- `Colab_DeepLearning_Forecast.ipynb` — **deep learning** (Keras): windowing → MLP (ANN), DNN, LSTM → kurva Loss/MAE → bandingkan dgn Naive/Linear/Prophet (MAE/RMSE). Untuk mengajar ANN/DNN. (TensorFlow sudah ada di Colab; cukup Run all.)
+- `Colab_Train_Prophet.ipynb` — generator `model_config.json` untuk website/HF. Memilih **best-per-variable** dari evaluasi **multi-step** (Naive, Linear recursive-lag, Prophet) → konsisten dengan analisis DL.
+- `Colab_DeepLearning_Forecast.ipynb` — **deep learning** (Keras): windowing → MLP (ANN), DNN, LSTM, evaluasi **multi-step** & **multi-seed** (rata-rata ± std) → kurva Loss/MAE → bandingkan dgn Naive/Linear/Prophet (3 variabel). Untuk mengajar ANN/DNN.
 - `huggingface-space/` — file untuk di-upload ke HF Space (`app.py`, `requirements.txt`, `README.md`)
 
 ## Langkah
