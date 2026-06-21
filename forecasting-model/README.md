@@ -14,7 +14,8 @@ ThingSpeak → [Colab: latih + backtest] → model *.json
 ```
 
 ## Isi folder
-- `Colab_Train_Prophet.ipynb` — notebook training (buka di Google Colab)
+- `Colab_Train_Prophet.ipynb` — training Prophet/Naive/Linear (best-per-variable) → `model_config.json`
+- `Colab_DeepLearning_Forecast.ipynb` — **deep learning** (Keras): windowing → MLP (ANN), DNN, LSTM → kurva Loss/MAE → bandingkan dgn Naive/Linear/Prophet (MAE/RMSE). Untuk mengajar ANN/DNN. (TensorFlow sudah ada di Colab; cukup Run all.)
 - `huggingface-space/` — file untuk di-upload ke HF Space (`app.py`, `requirements.txt`, `README.md`)
 
 ## Langkah
