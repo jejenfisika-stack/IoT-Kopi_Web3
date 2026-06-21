@@ -37,6 +37,19 @@ function tanggalCantik(num) {
   return `${s.slice(6, 8)}/${s.slice(4, 6)}/${s.slice(0, 4)}`
 }
 
+const csvNum = v => (Number.isFinite(v) ? Number(v).toFixed(2) : '')
+
+// Unduh data sebagai CSV (open data). BOM ﻿ agar Excel baca UTF-8.
+function unduhCSV(namaFile, header, baris) {
+  const esc = x => { const s = String(x ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
+  const csv = [header.map(esc).join(','), ...baris.map(r => r.map(esc).join(','))].join('\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = namaFile; a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function Home() {
   const [lang, setLang]         = useState('id')
   const [channel, setChannel]   = useState(null)
@@ -270,6 +283,27 @@ export default function Home() {
     } finally { setBusy('') }
   }
 
+  // ── Ekspor CSV (open data) ────────────────────────────────
+  function eksporDataCSV() {
+    const header = ['tanggal', 'suhu_avg', 'suhu_min', 'suhu_max', 'udara_avg', 'udara_min', 'udara_max', 'tanah_avg', 'tanah_min', 'tanah_max', 'jumlah_data']
+    const baris = harian.map(h => [
+      h.tanggal,
+      csvNum(h.suhu?.avg), csvNum(h.suhu?.min), csvNum(h.suhu?.max),
+      csvNum(h.udara?.avg), csvNum(h.udara?.min), csvNum(h.udara?.max),
+      csvNum(h.tanah?.avg), csvNum(h.tanah?.min), csvNum(h.tanah?.max),
+      h.jumlahData,
+    ])
+    unduhCSV('kopi-iot-data-harian.csv', header, baris)
+  }
+  function eksporForecastCSV() {
+    if (!forecast) return
+    const header = ['tanggal', 'suhu', 'udara', 'tanah']
+    const baris = forecast.tanggalPrediksi.map((tt, i) => [
+      tt, csvNum(forecast.suhu.prediksi[i]), csvNum(forecast.udara.prediksi[i]), csvNum(forecast.tanah.prediksi[i]),
+    ])
+    unduhCSV(`kopi-iot-forecast-${horizon}hari.csv`, header, baris)
+  }
+
   const hariPilih = harian.find(h => h.tanggal === tglPilih)
   const histSuhu  = harian.map(d => d.suhu?.avg)
   const histUdara = harian.map(d => d.udara?.avg)
@@ -352,7 +386,12 @@ export default function Home() {
               {terbaru && <> · {t.terakhir} <b className="text-gray-200">{new Date(terbaru.waktu).toLocaleString(lang === 'en' ? 'en-GB' : 'id-ID')}</b></>}</>
             )}
           </div>
-          <button onClick={muatData} className="chip px-3 py-1.5 text-xs font-bold text-gray-200 transition hover:text-white">{t.refresh}</button>
+          <div className="flex items-center gap-2">
+            {harian.length > 0 && (
+              <button onClick={eksporDataCSV} className="chip px-3 py-1.5 text-xs font-bold text-emerald-300 transition hover:text-emerald-200">{t.csvData}</button>
+            )}
+            <button onClick={muatData} className="chip px-3 py-1.5 text-xs font-bold text-gray-200 transition hover:text-white">{t.refresh}</button>
+          </div>
         </div>
 
         {/* ── FORECASTING ── */}
@@ -430,6 +469,7 @@ export default function Home() {
                       return <span key={n}>{t.kepercayaan(n)}: <b style={{ color: k.warna }}>{t.conf[k.teks]}</b> (R²={Number(f.r2).toFixed(2)})</span>
                     })}
               </div>
+              <button onClick={eksporForecastCSV} className="mt-3 chip px-3 py-1.5 text-xs font-bold text-emerald-300 transition hover:text-emerald-200">{t.csvForecast}</button>
             </div>
           )}
         </section>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Istilah from './Istilah'
 
 const short = a => (a ? `${a.slice(0, 10)}...${a.slice(-8)}` : '—')
 
@@ -128,6 +129,26 @@ export default function VerifyPanel({ t, forecast, contractAddr, explorer }) {
               )}
             </div>
           </div>
+
+          {/* ── Glosarium (tooltip) ── */}
+          {t.glosarium && (
+            <div>
+              <div className="mb-1 mono text-[10px] uppercase tracking-wider text-gray-500">
+                {t.glosarium.judul} <span className="normal-case tracking-normal text-gray-600">· {t.glosarium.petunjuk}</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Istilah chip def={t.glosarium.hash}>Hash</Istilah>
+                <Istilah chip def={t.glosarium.cid}>CID</Istilah>
+                <Istilah chip def={t.glosarium.ipfs}>IPFS</Istilah>
+                <Istilah chip def={t.glosarium.r2}>R²</Istilah>
+                <Istilah chip def={t.glosarium.mape}>MAPE</Istilah>
+                <Istilah chip def={t.glosarium.blockchain}>Blockchain</Istilah>
+                <Istilah chip def={t.glosarium.kontrak}>Smart contract</Istilah>
+                <Istilah chip def={t.glosarium.testnet}>Testnet</Istilah>
+                <Istilah chip def={t.glosarium.onchain}>On-chain</Istilah>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </section>

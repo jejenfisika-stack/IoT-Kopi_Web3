@@ -83,6 +83,22 @@ export const DICT = {
     footer: 'Kopi IoT Web3 · 100% gratis (testnet) · ',
     lihatKontrak: 'lihat kontrak',
 
+    csvData: '📥 Ekspor CSV',
+    csvForecast: '📥 Prediksi CSV',
+    glosarium: {
+      judul: 'Glosarium',
+      petunjuk: 'Arahkan kursor ke istilah untuk penjelasan.',
+      hash: 'Hash (SHA-256): "sidik jari" digital 64 karakter dari sebuah data. Berubah total bila datanya diubah sedikit saja.',
+      cid: 'CID: alamat unik file di IPFS — penunjuk ke metadata lengkap yang tersimpan terdesentralisasi.',
+      ipfs: 'IPFS: jaringan penyimpanan file terdesentralisasi (lewat Pinata). File diakses lewat CID-nya.',
+      r2: 'R² (0–1): seberapa baik garis prediksi mengikuti data. Makin dekat 1, makin akurat.',
+      mape: 'MAPE: rata-rata error prediksi dalam persen. Akurasi = 100 − MAPE.',
+      blockchain: 'Blockchain: buku besar digital terdistribusi yang tak bisa diubah. Di sini: Polygon Amoy (testnet).',
+      kontrak: 'Smart contract: program di blockchain yang menyimpan & mengatur data otomatis dan transparan.',
+      testnet: 'Testnet: jaringan blockchain untuk uji coba — gratis, tidak memakai uang sungguhan.',
+      onchain: 'On-chain: data yang benar-benar tersimpan di dalam blockchain (bukan server biasa).',
+    },
+
     verify: {
       toggle: '🔍 Lihat cara kerjanya',
       toggleClose: 'Sembunyikan',
@@ -213,6 +229,22 @@ export const DICT = {
     metaIPFS: '📦 IPFS Metadata',
     footer: 'Kopi IoT Web3 · 100% free (testnet) · ',
     lihatKontrak: 'view contract',
+
+    csvData: '📥 Export CSV',
+    csvForecast: '📥 Forecast CSV',
+    glosarium: {
+      judul: 'Glossary',
+      petunjuk: 'Hover a term for its explanation.',
+      hash: 'Hash (SHA-256): a 64-character digital "fingerprint" of a piece of data. Changes completely if the data is altered even slightly.',
+      cid: 'CID: a unique file address on IPFS — a pointer to the full metadata stored in a decentralized way.',
+      ipfs: 'IPFS: a decentralized file-storage network (via Pinata). Files are accessed by their CID.',
+      r2: 'R² (0–1): how well the prediction line fits the data. Closer to 1 means more accurate.',
+      mape: 'MAPE: average prediction error in percent. Accuracy = 100 − MAPE.',
+      blockchain: 'Blockchain: a distributed, tamper-proof digital ledger. Here: Polygon Amoy (testnet).',
+      kontrak: 'Smart contract: a program on the blockchain that stores & manages data automatically and transparently.',
+      testnet: 'Testnet: a blockchain network for testing — free, with no real money.',
+      onchain: 'On-chain: data actually stored inside the blockchain (not on a regular server).',
+    },
 
     verify: {
       toggle: '🔍 See how it works',
