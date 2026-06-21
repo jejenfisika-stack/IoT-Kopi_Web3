@@ -31,6 +31,7 @@ export const DICT = {
     liveSensor: 'live dari sensor',
 
     memuatSensor: 'Memuat data sensor…',
+    memuatHistori: 'memuat riwayat…',
     channel: 'Channel',
     pembacaan: 'pembacaan',
     hari: 'hari',
@@ -178,6 +179,7 @@ export const DICT = {
     liveSensor: 'live from sensor',
 
     memuatSensor: 'Loading sensor data…',
+    memuatHistori: 'loading history…',
     channel: 'Channel',
     pembacaan: 'readings',
     hari: 'days',

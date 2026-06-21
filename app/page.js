@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { ethers } from 'ethers'
-import { ambilFeeds, agregasiHarian, feedsTanggal, hashHarian } from './lib/thingspeak'
+import { ambilFeeds, ambilTerbaru, agregasiHarian, feedsTanggal, hashHarian } from './lib/thingspeak'
 import { forecastSemua, labelKepercayaan } from './lib/forecast'
 import { ambilForecastHF } from './lib/hfforecast'
 import { CONTRACT_ADDRESS, AMOY, PINATA_GATEWAY } from './lib/config'
@@ -57,6 +57,7 @@ export default function Home() {
   const [harian, setHarian]     = useState([])
   const [terbaru, setTerbaru]   = useState(null)
   const [loading, setLoading]   = useState(true)
+  const [loadingHistori, setLoadingHistori] = useState(false)
   const [error, setError]       = useState('')
 
   const [horizon, setHorizon]   = useState(7)
@@ -88,19 +89,29 @@ export default function Home() {
 
   // ── Muat data sensor dari ThingSpeak ──────────────────────
   const muatData = useCallback(async () => {
-    setLoading(true); setError('')
+    setError('')
+    // 1) Pembacaan terakhir (cepat, results=1) → kartu live tampil < 1 detik
+    try {
+      const { channel, terbaru } = await ambilTerbaru()
+      setChannel(channel)
+      if (terbaru) setTerbaru(terbaru)
+    } catch (e) { /* lanjut ke riwayat */ }
+    finally { setLoading(false) }
+
+    // 2) Riwayat lengkap (berat) untuk grafik & forecast → di latar belakang
+    setLoadingHistori(true)
     try {
       const { channel, feeds } = await ambilFeeds({ results: 8000 })
       setChannel(channel)
       setFeeds(feeds)
       const agg = agregasiHarian(feeds)
       setHarian(agg)
-      setTerbaru(feeds[feeds.length - 1] || null)
+      if (feeds.length) setTerbaru(feeds[feeds.length - 1])
       if (agg.length && !tglPilih) setTglPilih(agg[agg.length - 1].tanggal)
     } catch (e) {
       setError(e.message)
     } finally {
-      setLoading(false)
+      setLoadingHistori(false)
     }
   }, [tglPilih])
 
@@ -382,8 +393,10 @@ export default function Home() {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 glass px-4 py-3 text-sm">
           <div className="text-gray-400">
             {loading ? t.memuatSensor : (
-              <>{t.channel} <b className="text-gray-200">{channel?.name}</b> · {feeds.length.toLocaleString('id-ID')} {t.pembacaan} · {harian.length} {t.hari}
-              {terbaru && <> · {t.terakhir} <b className="text-gray-200">{new Date(terbaru.waktu).toLocaleString(lang === 'en' ? 'en-GB' : 'id-ID')}</b></>}</>
+              <>{t.channel} <b className="text-gray-200">{channel?.name}</b>
+              {feeds.length > 0 && <> · {feeds.length.toLocaleString('id-ID')} {t.pembacaan} · {harian.length} {t.hari}</>}
+              {terbaru && <> · {t.terakhir} <b className="text-gray-200">{new Date(terbaru.waktu).toLocaleString(lang === 'en' ? 'en-GB' : 'id-ID')}</b></>}
+              {loadingHistori && <> · <span className="text-gray-500">{t.memuatHistori}</span></>}</>
             )}
           </div>
           <div className="flex items-center gap-2">
