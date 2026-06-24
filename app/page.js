@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 import { ethers } from 'ethers'
 import { ambilFeeds, ambilTerbaru, agregasiHarian, feedsTanggal, hashHarian } from './lib/thingspeak'
 import { forecastSemua, labelKepercayaan } from './lib/forecast'
@@ -340,6 +341,7 @@ export default function Home() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link href="/belajar" className="chip px-3 py-1.5 text-xs font-bold text-emerald-300 transition hover:text-emerald-200">{t.belajar}</Link>
             {/* Toggle bahasa */}
             <div className="chip flex items-center gap-0.5 p-0.5 text-[11px] font-bold">
               <button onClick={() => ubahLang('id')} className={`rounded-full px-2.5 py-1 transition ${lang === 'id' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}>🇮🇩 ID</button>
