@@ -75,6 +75,7 @@ export default function Home() {
 
   const [onchainRingkasan, setOnchainRingkasan] = useState([])
   const [onchainForecast, setOnchainForecast]   = useState([])
+  const [kontribusi, setKontribusi] = useState(null) // { ringkasan, forecast, owner }
 
   const t = DICT[lang]
 
@@ -180,12 +181,29 @@ export default function Home() {
 
   useEffect(() => { bacaOnChain() }, [bacaOnChain])
 
+  // ── Proof of Contribution: hitung kontribusi wallet on-chain ─
+  const hitungKontribusi = useCallback(async (addr) => {
+    if (!adaKontrak() || !addr) { setKontribusi(null); return }
+    try {
+      const c = kontrakBaca()
+      const [totR, totF, owner] = await Promise.all([c.totalRingkasan(), c.totalForecast(), c.owner()])
+      const nR = Number(totR)
+      const proms = []
+      for (let i = 0; i < nR; i++) proms.push(c.getRingkasan(i))
+      const res = await Promise.all(proms)
+      const milikku = res.filter(r => r.pencatat?.toLowerCase() === addr.toLowerCase()).length
+      const adalahOwner = owner.toLowerCase() === addr.toLowerCase()
+      setKontribusi({ ringkasan: milikku, forecast: adalahOwner ? Number(totF) : 0, owner: adalahOwner })
+    } catch (e) { console.warn('hitungKontribusi:', e.message) }
+  }, [])
+
   // ── Wallet ────────────────────────────────────────────────
   async function handleConnect() {
-    if (wallet) { setWallet(''); return }
+    if (wallet) { setWallet(''); setKontribusi(null); return }
     try {
       const { address } = await kontrakTulis()
       setWallet(address)
+      hitungKontribusi(address)
     } catch (e) { alert(e.message) }
   }
 
@@ -236,7 +254,7 @@ export default function Home() {
       const receipt = await tx.wait()
       setTxHash(receipt.hash)
       setStatus(t.stRingkasanOk)
-      bacaOnChain()
+      bacaOnChain(); hitungKontribusi(wallet)
     } catch (e) {
       setStatus('❌ ' + (e.reason || e.shortMessage || e.message))
     } finally { setBusy('') }
@@ -289,7 +307,7 @@ export default function Home() {
       const receipt = await tx.wait()
       setTxHash(receipt.hash)
       setStatus(t.stForecastOk)
-      bacaOnChain()
+      bacaOnChain(); hitungKontribusi(wallet)
     } catch (e) {
       setStatus('❌ ' + (e.reason || e.shortMessage || e.message))
     } finally { setBusy('') }
@@ -537,6 +555,25 @@ export default function Home() {
           </div>
         )}
 
+        {/* ── PROOF OF CONTRIBUTION ── */}
+        {adaKontrak() && wallet && kontribusi && (
+          <section className="mb-6 glass glass-hover p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="display text-base font-bold text-white">{t.pocTitle}</h3>
+                <p className="mt-0.5 text-xs text-gray-400">{t.pocDesc}</p>
+                <div className="mt-1 mono text-[11px] text-gray-500">{short(wallet)} · {kontribusi.owner
+                  ? <span className="text-emerald-300">{t.pocOwner}</span>
+                  : <span className="text-amber-300">{t.pocBukanOwner}</span>}</div>
+              </div>
+              <div className="flex gap-3">
+                <PocStat label={t.pocRingkasan} value={kontribusi.ringkasan} warna="#4ade80" />
+                <PocStat label={t.pocForecast} value={kontribusi.forecast} warna="#a78bfa" />
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* ── DATA ON-CHAIN ── */}
         {adaKontrak() && (
           <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -620,6 +657,15 @@ function LiveCard({ emoji, label, value, unit, warna, live }) {
       <div className="mt-2 flex items-center gap-1.5 text-[11px] text-gray-500">
         <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" /> {live}
       </div>
+    </div>
+  )
+}
+
+function PocStat({ label, value, warna }) {
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/5 px-4 py-2 text-center">
+      <div className="display text-2xl font-bold" style={{ color: warna }}>{value}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
     </div>
   )
 }
