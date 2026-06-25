@@ -342,6 +342,7 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             <Link href="/belajar" className="chip px-3 py-1.5 text-xs font-bold text-emerald-300 transition hover:text-emerald-200">{t.belajar}</Link>
+            <Link href="/lab" className="chip hidden px-3 py-1.5 text-xs font-bold text-violet-300 transition hover:text-violet-200 sm:inline">{t.lab}</Link>
             {/* Toggle bahasa */}
             <div className="chip flex items-center gap-0.5 p-0.5 text-[11px] font-bold">
               <button onClick={() => ubahLang('id')} className={`rounded-full px-2.5 py-1 transition ${lang === 'id' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}>🇮🇩 ID</button>

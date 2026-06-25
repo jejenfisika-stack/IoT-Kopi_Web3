@@ -103,7 +103,8 @@ export const MODUL = [
     aktivitas: [
       { teks: 'Di bagian Forecasting, ganti toggle "Statistik lokal" ↔ "Model HF". Bandingkan prediksi & metode tiap variabel.', link: '/' },
       { teks: 'Buka Verify Panel → baca kartu "Model yang dipakai" (Linear/Naive/Prophet) dan rumus regresi.', link: '/' },
-      { teks: '(Lab Colab) Jalankan notebook Deep Learning: amati kurva loss/MAE dan tabel MAE_std.', link: null },
+      { teks: 'Buka Lab AI: latih jaringan saraf langsung di browser, ubah parameter, amati kurva loss turun real-time.', link: '/lab' },
+      { teks: '(Lanjutan) Jalankan notebook Deep Learning di Colab: amati kurva loss/MAE dan tabel MAE_std.', link: null },
     ],
     soal: [
       { level: 'S1', tipe: 'mc', ct: 'Algoritma', ail: 'Memahami',

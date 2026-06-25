@@ -6,6 +6,7 @@ export const DICT = {
     tagline: 'Sensor · AI · Blockchain',
     connect: 'Connect Wallet',
     belajar: '📚 Belajar',
+    lab: '🧪 Lab AI',
     chain: '⬡ POLYGON AMOY',
 
     heroBadge: 'Live dari kebun kopi · Bondowoso, Jawa Timur',
@@ -155,6 +156,7 @@ export const DICT = {
     tagline: 'Sensor · AI · Blockchain',
     connect: 'Connect Wallet',
     belajar: '📚 Learn',
+    lab: '🧪 AI Lab',
     chain: '⬡ POLYGON AMOY',
 
     heroBadge: 'Live from the coffee farm · Bondowoso, East Java',

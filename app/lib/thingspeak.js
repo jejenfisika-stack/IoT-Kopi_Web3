@@ -37,6 +37,21 @@ export async function ambilTerbaru() {
   return { channel, terbaru: feeds[feeds.length - 1] || null }
 }
 
+// Rata-rata HARIAN langsung dari ThingSpeak (average=1440 menit = 1 hari).
+// Ringan & cepat (±1 titik/hari) — cocok untuk lab/forecasting tanpa menarik ribuan data mentah.
+export async function ambilHarianAvg({ days = 1500 } = {}) {
+  const res = await fetch(buildUrl(`/channels/${THINGSPEAK.channelId}/feeds.json`, { average: 1440, days }), { cache: 'no-store' })
+  if (!res.ok) throw new Error(`ThingSpeak gagal: ${res.status}`)
+  const json = await res.json()
+  const harian = (json.feeds || []).map(f => ({
+    tanggal: String(f.created_at).slice(0, 10),
+    suhu:  parseFloat(f[THINGSPEAK.fields.suhu]),
+    udara: parseFloat(f[THINGSPEAK.fields.udara]),
+    tanah: parseFloat(f[THINGSPEAK.fields.tanah]),
+  })).filter(d => Number.isFinite(d.suhu) || Number.isFinite(d.udara) || Number.isFinite(d.tanah))
+  return { channel: json.channel, harian }
+}
+
 // Ambil bagian tanggal "YYYY-MM-DD" dari string waktu ThingSpeak (sudah dlm timezone lokal).
 function tanggalDari(waktu) {
   return String(waktu).slice(0, 10)
