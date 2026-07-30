@@ -29,3 +29,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# naskah/manuskrip — draft belum disubmit, jangan sampai terkirim ke repo publik
+/paper/
