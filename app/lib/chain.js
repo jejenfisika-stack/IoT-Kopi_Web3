@@ -2,7 +2,11 @@
 //  Interaksi blockchain (Polygon Amoy) via ethers v6
 // ============================================================
 import { ethers } from 'ethers'
-import { AMOY, AMOY_RPC, CONTRACT_ADDRESS, CONTRACT_ABI, SKALA } from './config'
+import { AMOY, AMOY_RPC, AMOY_RPCS, CONTRACT_ADDRESS, CONTRACT_ABI, SKALA } from './config'
+
+// Jaringan statis: mencegah ethers melakukan deteksi jaringan berulang yang
+// membuatnya menggantung dalam loop retry saat sebuah endpoint tidak resolve.
+const NET_AMOY = new ethers.Network(AMOY.chainName, AMOY.chainId)
 
 export function adaKontrak() {
   return Boolean(CONTRACT_ADDRESS && CONTRACT_ADDRESS.length === 42)
@@ -17,10 +21,31 @@ export function dariSkala(big) {
   return Number(big) / SKALA
 }
 
-// Provider read-only (tanpa wallet) untuk membaca data publik.
+// Provider read-only (tanpa wallet) dengan fallback berlapis: endpoint dicoba
+// berurutan sesuai prioritas, quorum 1 sehingga jawaban tercepat yang dipakai.
+// Bila satu endpoint mati/lambat, ethers otomatis pindah ke berikutnya.
+export function providerBaca() {
+  const daftar = (AMOY_RPCS?.length ? AMOY_RPCS : [AMOY_RPC]).map((url, i) => ({
+    provider: new ethers.JsonRpcProvider(url, NET_AMOY, { staticNetwork: NET_AMOY }),
+    priority: i + 1,
+    stallTimeout: 2500,
+    weight: 1,
+  }))
+  return new ethers.FallbackProvider(daftar, NET_AMOY, { quorum: 1 })
+}
+
 export function kontrakBaca() {
-  const provider = new ethers.JsonRpcProvider(AMOY_RPC)
-  return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider)
+  return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, providerBaca())
+}
+
+// Pesan ethers saat semua endpoint tumbang ("no runners?!") tidak informatif
+// bagi pengguna. Terjemahkan ke sebab yang sebenarnya.
+export function pesanErrorRpc(e) {
+  const raw = String(e?.shortMessage || e?.message || e)
+  if (/no runners|could not coalesce|ENOTFOUND|getaddrinfo|Failed to fetch|NETWORK_ERROR|timeout/i.test(raw)) {
+    return 'Tidak dapat menghubungi jaringan Polygon Amoy. Periksa koneksi internet Anda.'
+  }
+  return raw
 }
 
 // Connect MetaMask + pastikan jaringan Amoy. Kembalikan { signer, address }.

@@ -7,7 +7,7 @@ import { ambilFeeds, ambilTerbaru, agregasiHarian, feedsTanggal, hashHarian } fr
 import { forecastSemua, labelKepercayaan } from './lib/forecast'
 import { ambilForecastHF } from './lib/hfforecast'
 import { CONTRACT_ADDRESS, AMOY, PINATA_GATEWAY } from './lib/config'
-import { adaKontrak, kontrakBaca, kontrakTulis, keSkala, dariSkala, gasAman, linkTx } from './lib/chain'
+import { adaKontrak, kontrakBaca, kontrakTulis, keSkala, dariSkala, gasAman, linkTx, pesanErrorRpc } from './lib/chain'
 import { DICT } from './lib/i18n'
 import MetricChart from './components/MetricChart'
 import VerifyPanel from './components/VerifyPanel'
@@ -75,6 +75,10 @@ export default function Home() {
 
   const [onchainRingkasan, setOnchainRingkasan] = useState([])
   const [onchainForecast, setOnchainForecast]   = useState([])
+  // Status pembacaan on-chain: 'memuat' | 'ok' | 'gagal'. Dipisahkan dari isi data
+  // supaya "gagal membaca" tidak lagi tampil sebagai "0 catatan".
+  const [onchainStatus, setOnchainStatus] = useState('memuat')
+  const [onchainErr, setOnchainErr]       = useState('')
   const [kontribusi, setKontribusi] = useState(null) // { ringkasan, forecast, owner }
 
   const t = DICT[lang]
@@ -145,7 +149,8 @@ export default function Home() {
 
   // ── Baca data on-chain ────────────────────────────────────
   const bacaOnChain = useCallback(async () => {
-    if (!adaKontrak()) return
+    if (!adaKontrak()) { setOnchainStatus('ok'); return }
+    setOnchainStatus('memuat'); setOnchainErr('')
     try {
       const c = kontrakBaca()
       const [totR, totF] = await Promise.all([c.totalRingkasan(), c.totalForecast()])
@@ -174,8 +179,12 @@ export default function Home() {
           dataHash: f.dataHash, metadataCID: f.metadataCID, waktu: Number(f.waktuCatat),
         }
       }).reverse())
+      setOnchainStatus('ok')
     } catch (e) {
-      console.warn('Baca on-chain gagal:', e.message)
+      // JANGAN diam-diam menampilkan 0: bedakan gagal-baca dari benar-benar kosong.
+      console.warn('Baca on-chain gagal:', e?.message)
+      setOnchainErr(pesanErrorRpc(e))
+      setOnchainStatus('gagal')
     }
   }, [])
 
@@ -256,7 +265,7 @@ export default function Home() {
       setStatus(t.stRingkasanOk)
       bacaOnChain(); hitungKontribusi(wallet)
     } catch (e) {
-      setStatus('❌ ' + (e.reason || e.shortMessage || e.message))
+      setStatus('❌ ' + (e.reason || pesanErrorRpc(e)))
     } finally { setBusy('') }
   }
 
@@ -309,7 +318,7 @@ export default function Home() {
       setStatus(t.stForecastOk)
       bacaOnChain(); hitungKontribusi(wallet)
     } catch (e) {
-      setStatus('❌ ' + (e.reason || e.shortMessage || e.message))
+      setStatus('❌ ' + (e.reason || pesanErrorRpc(e)))
     } finally { setBusy('') }
   }
 
@@ -391,7 +400,7 @@ export default function Home() {
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <Stat label={t.statPembacaan} value={feeds.length ? feeds.length.toLocaleString('id-ID') : '—'} />
             <Stat label={t.statHari} value={harian.length || '—'} />
-            <Stat label={t.statOnchain} value={totalOnchain} />
+            <Stat label={t.statOnchain} value={onchainStatus === 'ok' ? totalOnchain : '—'} />
             <Stat label={t.statStatus} value={loading ? t.memuat : t.online} accent />
           </div>
         </section>
@@ -577,7 +586,8 @@ export default function Home() {
         {/* ── DATA ON-CHAIN ── */}
         {adaKontrak() && (
           <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <OnchainBox title={t.onchainRingkasanT} empty={t.emptyRingkasan}>
+            <OnchainBox title={t.onchainRingkasanT} empty={t.emptyRingkasan}
+              status={onchainStatus} err={onchainErr} teks={t} onCobaLagi={bacaOnChain}>
               {onchainRingkasan.map((r, i) => (
                 <div key={i} className="border-t border-white/5 py-2 text-xs">
                   <div className="flex justify-between"><b className="text-gray-200">{tanggalCantik(r.tanggal)}</b><span className="text-gray-500">{t.nDataShort(r.jumlahData)}</span></div>
@@ -587,7 +597,8 @@ export default function Home() {
                 </div>
               ))}
             </OnchainBox>
-            <OnchainBox title={t.onchainForecastT} empty={t.emptyForecast}>
+            <OnchainBox title={t.onchainForecastT} empty={t.emptyForecast}
+              status={onchainStatus} err={onchainErr} teks={t} onCobaLagi={bacaOnChain}>
               {onchainForecast.map((f, i) => (
                 <div key={i} className="border-t border-white/5 py-2 text-xs">
                   <div className="flex justify-between"><b className="text-gray-200">{t.dibuat} {tanggalCantik(f.tanggalBuat)}</b><span className="text-gray-500">{t.nhari(f.horizon)}</span></div>
@@ -680,14 +691,34 @@ function Mini({ label, v, sub }) {
   )
 }
 
-function OnchainBox({ title, empty, children }) {
+function OnchainBox({ title, empty, status = 'ok', err = '', teks, onCobaLagi, children }) {
   const kosong = !children || (Array.isArray(children) && children.length === 0)
+
+  let isi
+  if (status === 'memuat') {
+    isi = <div className="py-6 text-center text-xs text-gray-500">{teks?.onchainMemuat}</div>
+  } else if (status === 'gagal') {
+    // Penting: JANGAN tampilkan "belum ada data" saat yang terjadi adalah gagal baca.
+    isi = (
+      <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-3 text-xs text-amber-200">
+        <div className="mb-1 font-bold">⚠ {teks?.onchainGagalT}</div>
+        <div className="mb-2 text-amber-100/80">{err}</div>
+        <div className="mb-2 text-[11px] text-amber-100/60">{teks?.onchainGagalCatatan}</div>
+        {onCobaLagi && (
+          <button onClick={onCobaLagi} className="chip rounded-lg px-3 py-1.5 text-[11px] font-bold text-amber-200">
+            {teks?.onchainCobaLagi}
+          </button>
+        )}
+      </div>
+    )
+  } else {
+    isi = kosong ? <div className="py-6 text-center text-xs text-gray-500">{empty}</div> : children
+  }
+
   return (
     <div className="glass p-5">
       <h3 className="display mb-2 text-base font-bold text-white">{title}</h3>
-      <div className="max-h-72 overflow-y-auto pr-1">
-        {kosong ? <div className="py-6 text-center text-xs text-gray-500">{empty}</div> : children}
-      </div>
+      <div className="max-h-72 overflow-y-auto pr-1">{isi}</div>
     </div>
   )
 }

@@ -25,16 +25,29 @@ export const HF_FORECAST = {
 }
 
 // ── Blockchain: Polygon Amoy (testnet, GRATIS) ──────────────
+// Daftar RPC publik Amoy, urut prioritas. Aplikasi mencoba berurutan sehingga
+// satu endpoint mati tidak melumpuhkan pembacaan on-chain.
+//
+// CATATAN: 'rpc-amoy.polygon.technology' (endpoint lama) sudah TIDAK RESOLVE
+// dan sengaja dikeluarkan. Itu penyebab kartu on-chain sempat menampilkan 0
+// dan tombol catat ringkasan gagal sebelum sampai ke MetaMask.
+export const AMOY_RPCS = [
+  'https://polygon-amoy-bor-rpc.publicnode.com',
+  'https://polygon-amoy.drpc.org',
+  'https://80002.rpc.thirdweb.com',
+]
+
 export const AMOY = {
   chainIdHex: '0x13882', // 80002
+  chainId: 80002,
   chainName: 'Polygon Amoy Testnet',
   nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
-  rpcUrls: ['https://rpc-amoy.polygon.technology'],
+  rpcUrls: AMOY_RPCS,
   blockExplorerUrls: ['https://amoy.polygonscan.com'],
 }
 
-// RPC publik untuk membaca data on-chain tanpa wallet.
-export const AMOY_RPC = 'https://rpc-amoy.polygon.technology'
+// RPC utama (dipertahankan untuk kompatibilitas; pembacaan memakai AMOY_RPCS).
+export const AMOY_RPC = AMOY_RPCS[0]
 
 // ── Smart Contract ──────────────────────────────────────────
 // KopiIoTForecast.sol versi dengan field metadataCID (deploy 2026-06-18).
