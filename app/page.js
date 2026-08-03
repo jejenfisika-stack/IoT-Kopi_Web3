@@ -7,7 +7,7 @@ import { ambilFeeds, ambilTerbaru, agregasiHarian, feedsTanggal, hashHarian } fr
 import { forecastSemua, labelKepercayaan } from './lib/forecast'
 import { ambilForecastHF } from './lib/hfforecast'
 import { CONTRACT_ADDRESS, AMOY, PINATA_GATEWAY } from './lib/config'
-import { adaKontrak, kontrakBaca, kontrakTulis, keSkala, dariSkala, gasAman, linkTx, pesanErrorRpc } from './lib/chain'
+import { adaKontrak, kontrakBaca, kontrakTulis, keSkala, dariSkala, gasAman, linkTx, pesanErrorRpc, alasanRevert } from './lib/chain'
 import { DICT } from './lib/i18n'
 import MetricChart from './components/MetricChart'
 import VerifyPanel from './components/VerifyPanel'
@@ -253,12 +253,17 @@ export default function Home() {
       const cid = await uploadMetadata(metadata, `ringkasan-${hari.tanggal}.json`)
 
       setStatus(t.stMetaMask)
-      const { contract } = await kontrakTulis()
+      const { contract, address } = await kontrakTulis()
       const provider = new ethers.BrowserProvider(window.ethereum)
       const gas = await gasAman(provider)
 
+      // Simulasi dulu: ubah "missing revert data" menjadi alasan yang jelas.
+      const argRingkasan = [hari.tanggalNum, suhuArr, udaraArr, tanahArr, hari.jumlahData, dataHash, cid]
+      const tolak = await alasanRevert('catatRingkasan', argRingkasan, address)
+      if (tolak) { setStatus('❌ ' + tolak); setBusy(''); return }
+
       setStatus(t.stKirim)
-      const tx = await contract.catatRingkasan(hari.tanggalNum, suhuArr, udaraArr, tanahArr, hari.jumlahData, dataHash, cid, gas)
+      const tx = await contract.catatRingkasan(...argRingkasan, gas)
       setStatus(t.stKonfirmasi)
       const receipt = await tx.wait()
       setTxHash(receipt.hash)
@@ -306,12 +311,16 @@ export default function Home() {
       const cid = await uploadMetadata(metadata, `forecast-${tglBuat}.json`)
 
       setStatus(t.stMetaMask)
-      const { contract } = await kontrakTulis()
+      const { contract, address } = await kontrakTulis()
       const provider = new ethers.BrowserProvider(window.ethereum)
       const gas = await gasAman(provider)
 
+      const argForecast = [tglBuat, horizon, prediksi, dataHash, cid]
+      const tolak = await alasanRevert('catatForecast', argForecast, address)
+      if (tolak) { setStatus('❌ ' + tolak); setBusy(''); return }
+
       setStatus(t.stKirim)
-      const tx = await contract.catatForecast(tglBuat, horizon, prediksi, dataHash, cid, gas)
+      const tx = await contract.catatForecast(...argForecast, gas)
       setStatus(t.stKonfirmasi)
       const receipt = await tx.wait()
       setTxHash(receipt.hash)

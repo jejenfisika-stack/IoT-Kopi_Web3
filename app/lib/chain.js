@@ -38,6 +38,28 @@ export function kontrakBaca() {
   return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, providerBaca())
 }
 
+// Simulasikan transaksi lewat provider baca yang andal SEBELUM benar-benar
+// dikirim. Alasannya: banyak RPC (termasuk yang dipakai MetaMask) tidak
+// menyertakan alasan revert pada eth_estimateGas, sehingga ethers hanya
+// melaporkan "missing revert data" — pesan yang tidak bisa ditindaklanjuti.
+// Provider baca kita mengembalikan alasan aslinya, mis. "Tanggal ini sudah
+// dicatat" atau "Hanya pemilik sensor yang boleh mencatat".
+//
+// Mengembalikan string alasan bila transaksi akan ditolak, atau null bila
+// aman. Bila simulasi sendiri gagal (mis. jaringan), tetap null supaya
+// pengiriman tidak terhalang oleh pembacaan yang rewel.
+export async function alasanRevert(namaFungsi, args, from) {
+  try {
+    await kontrakBaca()[namaFungsi].staticCall(...args, { from })
+    return null
+  } catch (e) {
+    if (e?.reason) return e.reason
+    const m = String(e?.shortMessage || e?.message || '')
+    const cocok = m.match(/execution reverted:?\s*"?([^"]+?)"?\s*$/i)
+    return cocok ? cocok[1].trim() : null
+  }
+}
+
 // Pesan ethers saat semua endpoint tumbang ("no runners?!") tidak informatif
 // bagi pengguna. Terjemahkan ke sebab yang sebenarnya.
 export function pesanErrorRpc(e) {
