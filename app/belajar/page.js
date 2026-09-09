@@ -241,6 +241,7 @@ export default function Belajar() {
         <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <Link href="/" className="chip px-3 py-1.5 text-xs font-bold text-gray-200 transition hover:text-white">← Dashboard</Link>
           <div className="flex items-center gap-2">
+            <Link href="/lkpd" className="chip px-3 py-1.5 text-xs font-bold text-sky-300 transition hover:text-sky-200">📝 LKPD</Link>
             <Link href="/tes" className="chip px-3 py-1.5 text-xs font-bold text-violet-300 transition hover:text-violet-200">📋 Tes Awal / Akhir</Link>
             <div className="chip px-3 py-1.5 text-[11px] font-bold text-emerald-300">Progres: {totalSelesai}/{MODUL.length} modul</div>
           </div>
