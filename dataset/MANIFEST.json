@@ -1,0 +1,59 @@
+{
+  "nama_berkas": "sesi_20260824-20260829.csv",
+  "sha256": "92025679db8c2ab50123ebe812ace209f60643cd0c229ac16aca5e1c44454690",
+  "ukuran_byte": 328432,
+  "sumber": {
+    "platform": "ThingSpeak",
+    "channel_id": 1848413,
+    "channel_nama": "Soil Moisture and Air Humidity",
+    "publik": true,
+    "field": {
+      "field1": "suhu udara (degC)",
+      "field2": "kelembaban udara (%)",
+      "field3": "kelembaban tanah (%)"
+    }
+  },
+  "sesi": {
+    "kriteria": "jeda antar pembacaan <= 30 menit",
+    "mulai": "2026-08-24T06:00:51",
+    "akhir": "2026-08-29T20:15:23",
+    "durasi_jam": 134.24,
+    "jumlah_bacaan": 7992,
+    "entry_id_min": 17391,
+    "entry_id_maks": 25382
+  },
+  "nilai_hilang": {
+    "suhu": 0,
+    "udara": 0,
+    "tanah": 0
+  },
+  "kelengkapan_resample": {
+    "1min": {
+      "bin": 8056,
+      "terisi": 7982,
+      "persen": 99.08
+    },
+    "5min": {
+      "bin": 1612,
+      "terisi": 1608,
+      "persen": 99.75
+    },
+    "10min": {
+      "bin": 806,
+      "terisi": 805,
+      "persen": 99.88
+    },
+    "30min": {
+      "bin": 269,
+      "terisi": 269,
+      "persen": 100.0
+    },
+    "1h": {
+      "bin": 135,
+      "terisi": 135,
+      "persen": 100.0
+    }
+  },
+  "dibekukan_pada": "2026-10-24T14:48:24Z",
+  "catatan": "Dataset beku. Seluruh analisis harus membaca berkas ini, bukan API ThingSpeak, karena jendela 8.000 pembacaan ThingSpeak bergeser dan sesi ini akan hilang dari jendela begitu sensor merekam kembali."
+}
